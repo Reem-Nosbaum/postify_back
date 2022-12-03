@@ -4,14 +4,17 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
 
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv('SQLALCHEMY_DATABASE_URI')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS')
-db = SQLAlchemy(app)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ['SQLALCHEMY_DATABASE_URI']
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = os.environ['SQLALCHEMY_TRACK_MODIFICATIONS'] == 'True'
+
 CORS(app)
 
+db = SQLAlchemy(app)
 
 class Users(db.Model):
 	id = db.Column(db.BigInteger, primary_key=True)
@@ -83,6 +86,7 @@ def user_by_id(id_):
 	"""
 	...
 
+print(app.config['SQLALCHEMY_TRACK_MODIFICATIONS'])
 
 if __name__ == '__main__':
 	app.run(debug=True)
