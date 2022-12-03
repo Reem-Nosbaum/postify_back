@@ -2,10 +2,13 @@ from flask import Flask
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///postify.db"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv('SQLALCHEMY_DATABASE_URI')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS')
 db = SQLAlchemy(app)
 CORS(app)
 
@@ -34,7 +37,7 @@ class Posts(db.Model):
 	subject = db.Column(db.BigInteger, db.ForeignKey('subjects.id'), nullable=False)
 	body = db.Column(db.Text, nullable=False)
 	group = db.Column(db.BigInteger, db.ForeignKey('groups.id'))
-	time = db.Column(db.DateTime, nullable=False, default=datetime.now)
+	time = db.Column(db.DateTime, nullable=False, default=datetime.now())
 
 
 @app.route('/signup', methods=['POST'])
