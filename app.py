@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
-import datetime
+from datetime import datetime
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///postify.db"
@@ -17,21 +17,24 @@ class Users(db.Model):
 	is_admin = db.Column(db.Boolean, nullable=False)
 	is_banned = db.Column(db.Boolean, nullable=False)
 
+
 class Subjects(db.Model):
 	id = db.Column(db.BigInteger, primary_key=True)
 	subject = db.Column(db.Text, unique=True, nullable=False)
+
 
 class Groups(db.Model):
 	id = db.Column(db.BigInteger, primary_key=True)
 	groups = db.Column(db.Text, unique=True, nullable=False)
 
+
 class Posts(db.Model):
 	id = db.Column(db.BigInteger, primary_key=True)
-	user = db.Column(db.BigInteger, db.ForeignKey('users.id'),nullable=False)
-	subject = db.Column(db.BigInteger, db.ForeignKey('subjects.id'),nullable=False)
+	user = db.Column(db.BigInteger, db.ForeignKey('users.id'), nullable=False)
+	subject = db.Column(db.BigInteger, db.ForeignKey('subjects.id'), nullable=False)
 	body = db.Column(db.Text, nullable=False)
 	group = db.Column(db.BigInteger, db.ForeignKey('groups.id'))
-	time = db.Column(db.DateTime, nullable=False, default=datetime.datetime.now)
+	time = db.Column(db.DateTime, nullable=False, default=datetime.now)
 
 
 @app.route('/signup', methods=['POST'])
