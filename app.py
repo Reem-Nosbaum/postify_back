@@ -86,7 +86,6 @@ def user_by_id(id_):
 	"""
 	...
 
-print(app.config['SQLALCHEMY_TRACK_MODIFICATIONS'])
 
 if __name__ == '__main__':
 	app.run(debug=True)
