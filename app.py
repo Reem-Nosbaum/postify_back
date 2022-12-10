@@ -73,7 +73,10 @@ def login():
 
 @app.route('/logout', methods=['POST'])
 def logout():
-	...
+	if 'logged_in' in session:
+		session.pop('logged_in')
+		return make_response(jsonify({'task': 'logout', 'status': 'success'}), 200)
+	return make_response(jsonify({'task': 'logout', 'status': 'failed'}), 401)
 
 
 @app.route('/posts', methods=['GET', 'POST'])
