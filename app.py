@@ -1,9 +1,13 @@
-from flask import Flask
+from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash
+import uuid
+
+
 
 load_dotenv()
 
@@ -17,7 +21,7 @@ CORS(app)
 db = SQLAlchemy(app)
 
 class Users(db.Model):
-	id = db.Column(db.BigInteger, primary_key=True)
+	id = db.Column(db.Integer, primary_key=True)
 	username = db.Column(db.Text, unique=True, nullable=False)
 	password = db.Column(db.Text, nullable=False)
 	is_admin = db.Column(db.Boolean, nullable=False)
@@ -25,27 +29,36 @@ class Users(db.Model):
 
 
 class Subjects(db.Model):
-	id = db.Column(db.BigInteger, primary_key=True)
+	id = db.Column(db.Integer, primary_key=True)
 	subject = db.Column(db.Text, unique=True, nullable=False)
 
 
 class Groups(db.Model):
-	id = db.Column(db.BigInteger, primary_key=True)
+	id = db.Column(db.Integer, primary_key=True)
 	groups = db.Column(db.Text, unique=True, nullable=False)
 
 
 class Posts(db.Model):
-	id = db.Column(db.BigInteger, primary_key=True)
-	user = db.Column(db.BigInteger, db.ForeignKey('users.id'), nullable=False)
-	subject = db.Column(db.BigInteger, db.ForeignKey('subjects.id'), nullable=False)
+	id = db.Column(db.Integer, primary_key=True)
+	user = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+	subject = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
 	body = db.Column(db.Text, nullable=False)
-	group = db.Column(db.BigInteger, db.ForeignKey('groups.id'))
+	group = db.Column(db.Integer, db.ForeignKey('groups.id'))
 	time = db.Column(db.DateTime, nullable=False, default=datetime.now())
 
 
-@app.route('/signup', methods=['POST'])
+
+@app.route("/signup", methods=['POST'])
 def signup():
-	...
+	username = request.form['username']
+	password = request.form['password']
+	if Users.query.filter_by(username=username).all():
+		return make_response(jsonify({'task': 'signup', 'status': 'failed', 'reason': 'username already exists'}), 409)
+	hashed_password = generate_password_hash(password, method='sha256')
+	new_user = Users(username=username, password=hashed_password, is_admin=False, is_banned=False)
+	db.session.add(new_user)  # adding the new user to the db
+	db.session.commit()
+	return make_response(jsonify({'task': 'signup', 'status': 'success'}), 200)
 
 
 @app.route('/login', methods=['POST'])
