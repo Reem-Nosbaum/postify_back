@@ -1,17 +1,15 @@
-from flask import Flask, request, jsonify, make_response
+from flask import Flask, request, jsonify, make_response, session
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
 from dotenv import load_dotenv
-from werkzeug.security import generate_password_hash
-import uuid
-
-
+from werkzeug.security import generate_password_hash, check_password_hash
 
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = 'not protected'  # creating a session
 
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ['SQLALCHEMY_DATABASE_URI']
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = os.environ['SQLALCHEMY_TRACK_MODIFICATIONS'] == 'True'
@@ -63,7 +61,14 @@ def signup():
 
 @app.route('/login', methods=['POST'])
 def login():
-	...
+	password: str = request.form['password']
+	username: str = request.form['username']
+	# checking if the user and password are in the db
+	user: list[Users] = Users.query.filter_by(username=username).all()
+	if user and check_password_hash(user[0].password, password):
+		session['logged_in'] = True
+		return make_response(jsonify({'task': 'login', 'status': 'success'}), 200)
+	return make_response(jsonify({'task': 'login', 'status': 'failed'}), 401)
 
 
 @app.route('/logout', methods=['POST'])
