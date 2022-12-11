@@ -1,13 +1,16 @@
-from flask import Flask
+from flask import Flask, request, jsonify, make_response, session
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash, check_password_hash
+from utils.auth import signup_pw_validation
 
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.environ['SECRET_KEY']
 
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ['SQLALCHEMY_DATABASE_URI']
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = os.environ['SQLALCHEMY_TRACK_MODIFICATIONS'] == 'True'
@@ -16,8 +19,9 @@ CORS(app)
 
 db = SQLAlchemy(app)
 
+
 class Users(db.Model):
-	id = db.Column(db.BigInteger, primary_key=True)
+	id = db.Column(db.Integer, primary_key=True)
 	username = db.Column(db.Text, unique=True, nullable=False)
 	password = db.Column(db.Text, nullable=False)
 	is_admin = db.Column(db.Boolean, nullable=False)
@@ -25,37 +29,59 @@ class Users(db.Model):
 
 
 class Subjects(db.Model):
-	id = db.Column(db.BigInteger, primary_key=True)
+	id = db.Column(db.Integer, primary_key=True)
 	subject = db.Column(db.Text, unique=True, nullable=False)
 
 
 class Groups(db.Model):
-	id = db.Column(db.BigInteger, primary_key=True)
-	groups = db.Column(db.Text, unique=True, nullable=False)
+	id = db.Column(db.Integer, primary_key=True)
+	group = db.Column(db.Text, unique=True, nullable=False)
 
 
 class Posts(db.Model):
-	id = db.Column(db.BigInteger, primary_key=True)
-	user = db.Column(db.BigInteger, db.ForeignKey('users.id'), nullable=False)
-	subject = db.Column(db.BigInteger, db.ForeignKey('subjects.id'), nullable=False)
+	id = db.Column(db.Integer, primary_key=True)
+	user = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+	subject = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
 	body = db.Column(db.Text, nullable=False)
-	group = db.Column(db.BigInteger, db.ForeignKey('groups.id'))
+	group = db.Column(db.Integer, db.ForeignKey('groups.id'))
 	time = db.Column(db.DateTime, nullable=False, default=datetime.now())
 
 
-@app.route('/signup', methods=['POST'])
+@app.route("/signup", methods=['POST'])
 def signup():
-	...
+	password: str = request.form['password']
+	username: str = request.form['username']
+	if Users.query.filter_by(username=username).all():
+		return make_response(jsonify({'task': 'signup', 'status': 'failed', 'reason': 'username already exists'}), 409)
+	if not signup_pw_validation(password):
+		return make_response(jsonify({'task': 'login', 'status': 'failed', 'reason': 'password must be more then 10 characters'}), 400)
+	hashed_password = generate_password_hash(password, method='sha256')
+	new_user: Users = Users(username=username, password=hashed_password, is_admin=False, is_banned=False)
+	db.session.add(new_user)
+	db.session.commit()
+	return make_response(jsonify({'task': 'signup', 'status': 'success'}), 200)
 
 
 @app.route('/login', methods=['POST'])
 def login():
-	...
+	password: str = request.form['password']
+	username: str = request.form['username']
+	# checking if the user and password are in the db
+	user_ls: list[Users] = Users.query.filter_by(username=username).all()
+	if user_ls and check_password_hash(user_ls[0].password, password):
+		session['user'] = username
+		session['is_admin'] = user_ls[0].is_admin
+		return make_response(jsonify({'task': 'login', 'status': 'success'}), 200)
+	return make_response(jsonify({'task': 'login', 'status': 'failed'}), 401)
 
 
 @app.route('/logout', methods=['POST'])
 def logout():
-	...
+	if 'user' in session:
+		session.pop('user')
+		session.pop('is_admin')
+		return make_response(jsonify({'task': 'logout', 'status': 'success'}), 200)
+	return make_response(jsonify({'task': 'logout', 'status': 'failed'}), 401)
 
 
 @app.route('/posts', methods=['GET', 'POST'])
@@ -70,7 +96,7 @@ def posts():
 
 
 @app.route('/posts/<int:id_>', methods=['GET', 'PUT', 'DELETE'])
-def post_by_id(id_):
+def post_by_id(id_: int):
 	"""
 	get message by id
 	update message by id (if the user is the poster)
@@ -80,7 +106,7 @@ def post_by_id(id_):
 
 
 @app.route('/users/<int:id_>', methods=['PUT'])
-def user_by_id(id_):
+def user_by_id(id_: int):
 	"""
 	update is_banned (if the user is admin)
 	"""
