@@ -1,4 +1,4 @@
-from ..constants.auth import min_pw_len
+from constants.auth import min_pw_len
 
 
 def signup_pw_validation(pw: str) -> bool:
