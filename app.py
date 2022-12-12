@@ -27,6 +27,9 @@ class Users(db.Model):
 	is_admin = db.Column(db.Boolean, nullable=False)
 	is_banned = db.Column(db.Boolean, nullable=False)
 
+	def get_dict_user(self):
+		return {'id': self.id, 'username': self.username, 'password': self.password, 'is_admin': self.is_admin, 'is_banned': self.is_banned}
+
 
 class Subjects(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
@@ -45,6 +48,9 @@ class Posts(db.Model):
 	body = db.Column(db.Text, nullable=False)
 	group = db.Column(db.Integer, db.ForeignKey('groups.id'))
 	time = db.Column(db.DateTime, nullable=False, default=datetime.now())
+
+	def get_dict_post(self):
+		return {'id': self.id, 'user': self.user, 'subject': self.subject, 'body': self.body, 'group': self.group, 'time': self.time}
 
 
 @app.route("/signup", methods=['POST'])
@@ -71,6 +77,7 @@ def login():
 	if user_ls and check_password_hash(user_ls[0].password, password):
 		session['user'] = username
 		session['is_admin'] = user_ls[0].is_admin
+		session['is_banned'] = user_ls[0].is_banned
 		return make_response(jsonify({'task': 'login', 'status': 'success'}), 200)
 	return make_response(jsonify({'task': 'login', 'status': 'failed'}), 401)
 
@@ -92,7 +99,28 @@ def posts():
 	get message by subject (returns all public messages in the subject) - query params
 	get posts by user_id (returns all public messages from the user)- query params
 	"""
-	...
+	if not session['is_banned']:  # checking if the user is banned
+		if request.method == 'GET':
+			if 'subject' in request.args:
+				get_all_posts_by_subject = Posts.query.filter_by(subject=request.args.get('subject'))
+				all_dict_posts = [post.get_dict_post() for post in get_all_posts_by_subject]
+			elif 'user' in request.args:
+				get_all_posts_by_user_id = Posts.query.filter_by(user=request.args.get('user'))
+				all_dict_posts = [post.get_dict_post() for post in get_all_posts_by_user_id]
+			else:
+				get_all_posts = Posts.query.filter_by(user=session['user']).all()
+				all_dict_posts = [post.get_dict_post() for post in get_all_posts]
+			return make_response(jsonify(all_dict_posts), 200)
+		elif request.method == 'POST':
+			subject = request.form['subject']
+			body = request.form['body']
+			group = request.form['group']
+			new_post = Posts(user=session['user'], subject=subject, body=body, group=group)
+			db.session.add(new_post)
+			db.session.commit()
+			return make_response(jsonify({'task': 'post', 'status': 'success'}), 200)
+		return make_response(jsonify({'task': 'post', 'status': 'failed'}), 401)
+	return make_response(jsonify({'task': 'post', 'status': 'failed', 'reason': 'user is banned'}), 403)
 
 
 @app.route('/posts/<int:id_>', methods=['GET', 'PUT', 'DELETE'])
@@ -102,7 +130,16 @@ def post_by_id(id_: int):
 	update message by id (if the user is the poster)
 	delete message by id (if the user is the poster)
 	"""
-	...
+	if not session['is_banned']:
+		if request.method == 'GET':
+			get_posts_by_id: list[Posts] = Posts.query.filter_by(id=id_).all()  # getting the message by id
+			all_dict_posts: list[dict] = [post.get_dict_post() for post in get_posts_by_id]
+			return make_response(jsonify(all_dict_posts), 200)
+		elif request.method == 'PUT':
+			...
+		elif request.method == 'DELETE':
+			...
+	return make_response(jsonify({'task': 'post', 'status': 'failed', 'reason': 'user is banned'}), 403)
 
 
 @app.route('/users/<int:id_>', methods=['PUT'])
@@ -110,7 +147,13 @@ def user_by_id(id_: int):
 	"""
 	update is_banned (if the user is admin)
 	"""
-	...
+	if request.method == 'PUT':
+		if session['is_admin'] is True:
+			get_user_by_id: list[Users] = Users.query.filter_by(id=id_).all()
+			user_dict: list[dict] = [user.get_dict_user() for user in get_user_by_id]
+			print(user_dict)
+			return ...
+	return make_response(jsonify({'task': 'post', 'status': 'failed', 'reason': 'user is not admin'}), 403)
 
 
 if __name__ == '__main__':
