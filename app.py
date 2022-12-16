@@ -132,13 +132,23 @@ def post_by_id(id_: int):
 	"""
 	if not session['is_banned']:
 		if request.method == 'GET':
-			get_posts_by_id: list[Posts] = Posts.query.filter_by(id=id_).all()  # getting the message by id
-			all_dict_posts: list[dict] = [post.get_dict_post() for post in get_posts_by_id]
-			return make_response(jsonify(all_dict_posts), 200)
+			get_posts_by_id: list[Posts] = Posts.query.filter_by(id=id_).all()
+			all_dict_posts_by_id: list[dict] = [post.get_dict_post() for post in get_posts_by_id]
+			return make_response(jsonify(all_dict_posts_by_id), 200)
 		elif request.method == 'PUT':
-			...
+			posts_by_id: list[Posts] = Posts.query.filter_by(id=id_).all()
+			if session['user'] == posts_by_id[0].user:
+				posts_by_id[0].body = request.form['body']
+				db.session.commit()
+				return make_response(jsonify({'task': 'put', 'status': 'success'}), 200)
+			return make_response(jsonify({'task': 'put', 'status': 'failed'}), 401)
 		elif request.method == 'DELETE':
-			...
+			posts_by_id: list[Posts] = Posts.query.filter_by(id=id_).all()
+			if session['user'] == posts_by_id[0].user:
+				db.session.delete(posts_by_id[0])
+				db.session.commit()
+				return make_response(jsonify({'task': 'delete', 'status': 'success'}), 200)
+			return make_response(jsonify({'task': 'delete', 'status': 'failed'}), 401)
 	return make_response(jsonify({'task': 'post', 'status': 'failed', 'reason': 'user is banned'}), 403)
 
 
@@ -148,12 +158,13 @@ def user_by_id(id_: int):
 	update is_banned (if the user is admin)
 	"""
 	if request.method == 'PUT':
+		get_user_by_id: list[Users] = Users.query.filter_by(id=id_).all()
 		if session['is_admin'] is True:
-			get_user_by_id: list[Users] = Users.query.filter_by(id=id_).all()
-			user_dict: list[dict] = [user.get_dict_user() for user in get_user_by_id]
-			print(user_dict)
-			return ...
-	return make_response(jsonify({'task': 'post', 'status': 'failed', 'reason': 'user is not admin'}), 403)
+			get_user_by_id[0].is_banned = True
+			db.session.commit()
+			return make_response(jsonify({'task': 'put', 'status': 'successes'}), 200)
+		return make_response(jsonify({'task': 'post', 'status': 'failed', 'reason': 'user is not admin'}), 403)
+	return make_response(jsonify({'task': 'put', 'status': 'failed'}), 401)
 
 
 if __name__ == '__main__':
