@@ -152,15 +152,13 @@ def user_by_id(id_: int):
 	update is_banned (if the user is admin)
 	"""
 	get_user_by_id: list[Users] = Users.query.filter_by(id=id_).all()
-	admin_choice = request.form['ban_user']
-	if 'False' in admin_choice:
-		get_user_by_id[0].is_banned = False
-	elif 'True' in admin_choice:
-		get_user_by_id[0].is_banned = True
-	db.session.commit()
-	return make_response(jsonify({'task': 'update_is_banned', 'status': 'success'}), 200)
+	if Users.query.filter_by(id=id_).all():
+		is_banned = request.json
+		get_user_by_id[0].is_banned = is_banned['is_banned']  # need to sand 1 or 0, from postman
+		db.session.commit()
+		return make_response(jsonify({'task': 'update_is_banned', 'status': 'success'}), 200)
+	return make_response(jsonify({'task': 'update_is_banned', 'status': 'failed'}), 400)
 
 
 if __name__ == '__main__':
 	app.run(debug=True)
-
