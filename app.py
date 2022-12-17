@@ -62,7 +62,8 @@ class Posts(db.Model):
 				'subject': self.subject,
 				'body': self.body,
 				'group': self.group,
-				'time': self.time}
+				'time_crated': self.time_crated,
+				'time_updated': self.time_updated}
 
 
 def login_required(f):
