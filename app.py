@@ -125,7 +125,6 @@ def logout():
 
 
 @app.route('/posts', methods=['GET', 'POST'])
-@login_required
 def posts():
 	"""
 	post massage (if user is not banned)
@@ -133,38 +132,37 @@ def posts():
 	get message by subject (returns all public messages in the subject) - query params
 	get posts by user_id (returns all public messages from the user)- query params
 	"""
-	if request.method == 'GET':
-		if 'subject' in request.args:
-			get_all_posts_by_subject = Posts.query.filter_by(subject=request.args.get('subject'))
-			all_dict_posts = [post.get_dict() for post in get_all_posts_by_subject]
-		elif 'username' in request.args:
-			get_all_posts_by_username = Posts.query.filter_by(user=request.args.get('username'))
-			all_dict_posts = [post.get_dict() for post in get_all_posts_by_username]
-		else:
-			get_all_posts = Posts.query.filter_by(user=session['user']).all()
-			all_dict_posts = [post.get_dict() for post in get_all_posts]
-		return make_response(jsonify(all_dict_posts), 200)
-	elif not session['is_banned']:  # checking if the user is banned
-		if request.method == 'POST':
-			subject = request.form['subject']
-			body = request.form['body']
-			group = request.form['group']
-			new_post = Posts(user=session['user'], subject=subject, body=body, group=group)
-			db.session.add(new_post)
-			db.session.commit()
-			return make_response(jsonify({'task': 'post', 'status': 'success'}), 200)
-		return make_response(jsonify({'task': 'post', 'status': 'failed'}), 401)
-	return make_response(jsonify({'task': 'post', 'status': 'failed', 'reason': 'user is banned'}), 403)
+	...
 
 
 @app.route('/posts/<int:id_>', methods=['GET', 'PUT', 'DELETE'])
+@login_required
 def post_by_id(id_: int):
 	"""
 	get message by id
 	update message by id (if the user is the poster)
 	delete message by id (if the user is the poster)
 	"""
-	...
+	if not session['is_banned']:
+		if request.method == 'GET':
+			get_posts_by_id: list[Posts] = Posts.query.filter_by(id=id_).all()  # getting the message by id
+			all_dict_posts: list[dict] = [post.get_dict() for post in get_posts_by_id]
+			return make_response(jsonify(all_dict_posts), 200)
+		elif request.method == 'PUT':
+			posts_by_id: list[Posts] = Posts.query.filter_by(id=id_).all()
+			if session['user'] == posts_by_id[0].user:
+				posts_by_id[0].body = request.form['body']
+				db.session.commit()
+				return make_response(jsonify({'task': 'put', 'status': 'success'}), 200)
+			return make_response(jsonify({'task': 'put', 'status': 'failed'}), 401)
+		elif request.method == 'DELETE':
+			posts_by_id: list[Posts] = Posts.query.filter_by(id=id_).all()
+			if session['user'] == posts_by_id[0].user:
+				db.session.delete(posts_by_id[0])
+				db.session.commit()
+				return make_response(jsonify({'task': 'delete', 'status': 'success'}), 200)
+			return make_response(jsonify({'task': 'delete', 'status': 'failed'}), 401)
+	return make_response(jsonify({'task': 'post', 'status': 'failed', 'reason': 'user is banned'}), 403)
 
 
 @app.route('/users/<int:id_>', methods=['PUT'])
