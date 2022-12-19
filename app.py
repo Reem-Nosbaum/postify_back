@@ -1,13 +1,13 @@
+from datetime import datetime
+import os
+from functools import wraps
 from flask import Flask, request, jsonify, make_response, session
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
-import os
-from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import load_dotenv
+
 from utils.auth import signup_pw_validation
-from functools import wraps
-from typing import Optional
 
 load_dotenv()
 
@@ -23,6 +23,7 @@ db = SQLAlchemy(app)
 
 
 class Users(db.Model):
+	__tablename__ = 'users'
 	id = db.Column(db.Integer, primary_key=True)
 	username = db.Column(db.Text, unique=True, nullable=False)
 	password = db.Column(db.Text, nullable=False)
@@ -30,40 +31,47 @@ class Users(db.Model):
 	is_banned = db.Column(db.Boolean, nullable=False)
 
 	def get_dict(self):
-		return {'id': self.id,
-				'username': self.username,
-				'password': self.password,
-				'is_admin': self.is_admin,
-				'is_banned': self.is_banned}
+		return {
+			'id': self.id,
+			'username': self.username,
+			'password': self.password,
+			'is_admin': self.is_admin,
+			'is_banned': self.is_banned
+		}
 
 
 class Subjects(db.Model):
+	__tablename__ = 'subjects'
 	id = db.Column(db.Integer, primary_key=True)
 	subject = db.Column(db.Text, unique=True, nullable=False)
 
 
 class Groups(db.Model):
+	__tablename__ = 'groups'
 	id = db.Column(db.Integer, primary_key=True)
 	group = db.Column(db.Text, unique=True, nullable=False)
 
 
 class Posts(db.Model):
+	__tablename__ = 'posts'
 	id = db.Column(db.Integer, primary_key=True)
 	user = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 	subject = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
 	body = db.Column(db.Text, nullable=False)
-	group = db.Column(db.Integer, db.ForeignKey('groups.id'))
+	group = db.Column(db.Integer, db.ForeignKey('groups.id'), nullable=False)
 	time_crated = db.Column(db.DateTime, nullable=False, default=datetime.now())
 	time_updated = db.Column(db.DateTime, nullable=True)
 
 	def get_dict(self):
-		return {'id': self.id,
-				'user': self.user,
-				'subject': self.subject,
-				'body': self.body,
-				'group': self.group,
-				'time_crated': self.time_crated,
-				'time_updated': self.time_updated}
+		return {
+			'id': self.id,
+			'user': self.user,
+			'subject': self.subject,
+			'body': self.body,
+			'group': self.group,
+			'time_crated': self.time_crated,
+			'time_updated': self.time_updated
+		}
 
 
 def login_required(f):
@@ -79,7 +87,7 @@ def admin_required(f):
 	@wraps(f)
 	def decorated(*args, **kwargs):
 		if 'user' in session:
-			if session['is_admin']:
+			if session['user']['is_admin']:
 				return f(*args, **kwargs)
 			return make_response(jsonify({'task': 'failed', 'detail': 'forbidden'}), 403)
 		return make_response(jsonify({'task': 'failed', 'detail': 'unauthorized'}), 401)
@@ -108,9 +116,7 @@ def login():
 	# checking if the user and password are in the db
 	user_ls: list[Users] = Users.query.filter_by(username=username).all()
 	if user_ls and check_password_hash(user_ls[0].password, password):
-		session['user'] = username
-		session['is_admin'] = user_ls[0].is_admin
-		session['is_banned'] = user_ls[0].is_banned
+		session['user'] = user_ls[0].get_dict()
 		return make_response(jsonify({'task': 'login', 'status': 'success'}), 200)
 	return make_response(jsonify({'task': 'login', 'status': 'failed'}), 401)
 
@@ -119,8 +125,6 @@ def login():
 def logout():
 	if 'user' in session:
 		session.pop('user')
-		session.pop('is_admin')
-		session.pop('is_banned')
 		return make_response(jsonify({'task': 'logout', 'status': 'success'}), 200)
 	return make_response(jsonify({'task': 'logout', 'status': 'failed'}), 401)
 
@@ -152,14 +156,16 @@ def user_by_id(id_: int):
 	"""
 	update is_banned (if the user is admin)
 	"""
-	get_user_by_id: list[Users] = Users.query.filter_by(id=id_).all()
-	if Users.query.filter_by(id=id_).all():
-		is_banned = request.json
-		get_user_by_id[0].is_banned = is_banned['is_banned']  # need to sand 1 or 0, from postman
-		db.session.commit()
-		return make_response(jsonify({'task': 'update_is_banned', 'status': 'success'}), 200)
-	return make_response(jsonify({'task': 'update_is_banned', 'status': 'failed'}), 400)
+	user_to_update_ls: list[Users] = Users.query.filter_by(id=id_).all()
+	if user_to_update_ls:
+		req_body: dict[str, bool] = request.json
+		if 'is_banned' in req_body and type(req_body['is_banned']) == bool:
+			user_to_update_ls[0].is_banned = req_body['is_banned']
+			db.session.commit()
+			return make_response(jsonify({'task': 'update_user', 'status': 'success'}), 200)
+		return make_response(jsonify({'task': 'update_user', 'status': 'failed', 'detail': 'request body is not valid'}), 400)
+	return make_response(jsonify({'task': 'update_user', 'status': 'failed', 'detail': 'user id does not exist'}), 400)
 
 
 if __name__ == '__main__':
-	app.run(debug=True)
+	app.run(port=5001, debug=True)
