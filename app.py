@@ -29,7 +29,6 @@ class Users(db.Model):
 	password = db.Column(db.Text, nullable=False)
 	is_admin = db.Column(db.Boolean, nullable=False)
 	is_banned = db.Column(db.Boolean, nullable=False)
-	user_posts = db.relationship("Posts", back_populates="author")
 
 	def get_dict(self):
 		return {
@@ -50,28 +49,28 @@ class Subjects(db.Model):
 class Channels(db.Model):
 	__tablename__ = 'channels'
 	id = db.Column(db.Integer, primary_key=True)
-	chanel = db.Column(db.Text, unique=True, nullable=False)
+	channel = db.Column(db.Text, unique=True, nullable=False)
 
 
 class Posts(db.Model):
 	__tablename__ = 'posts'
 	id = db.Column(db.Integer, primary_key=True)
-	author = db.relationship("Users", back_populates="user_posts")
+	user = db.relationship("Users", backref="users")
 	user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 	subject = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
 	body = db.Column(db.Text, nullable=False)
-	chanel = db.Column(db.Integer, db.ForeignKey('channels.id'), nullable=False)
+	channel = db.Column(db.Integer, db.ForeignKey('channels.id'), nullable=False)
 	time_crated = db.Column(db.DateTime, nullable=False, default=datetime.now())
 	time_updated = db.Column(db.DateTime, nullable=True)
 
 	def get_dict(self):
 		return {
 			'id': self.id,
-			'author': self.author,
+			'user': self.user,
 			'user_id': self.user_id,
 			'subject': self.subject,
 			'body': self.body,
-			'chanel': self.chanel,
+			'channel': self.channel,
 			'time_crated': self.time_crated,
 			'time_updated': self.time_updated
 		}
