@@ -29,7 +29,7 @@ class Users(db.Model):
 	password = db.Column(db.Text, nullable=False)
 	is_admin = db.Column(db.Boolean, nullable=False)
 	is_banned = db.Column(db.Boolean, nullable=False)
-	posts = db.relationship("Posts", backref="users")
+	user_posts = db.relationship("Posts", back_populates="author")
 
 	def get_dict(self):
 		return {
@@ -45,33 +45,33 @@ class Subjects(db.Model):
 	__tablename__ = 'subjects'
 	id = db.Column(db.Integer, primary_key=True)
 	subject = db.Column(db.Text, unique=True, nullable=False)
-	posts = db.relationship("Posts", backref="subjects")
 
 
-class Categories(db.Model):
-	__tablename__ = 'categories'
+class Channels(db.Model):
+	__tablename__ = 'channels'
 	id = db.Column(db.Integer, primary_key=True)
-	category = db.Column(db.Text, unique=True, nullable=False)
-	posts = db.relationship("Posts", backref="categories")
+	chanel = db.Column(db.Text, unique=True, nullable=False)
 
 
 class Posts(db.Model):
 	__tablename__ = 'posts'
 	id = db.Column(db.Integer, primary_key=True)
-	user = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+	author = db.relationship("Users", back_populates="user_posts")
+	user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 	subject = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
 	body = db.Column(db.Text, nullable=False)
-	category = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
+	chanel = db.Column(db.Integer, db.ForeignKey('channels.id'), nullable=False)
 	time_crated = db.Column(db.DateTime, nullable=False, default=datetime.now())
 	time_updated = db.Column(db.DateTime, nullable=True)
 
 	def get_dict(self):
 		return {
 			'id': self.id,
-			'user': self.user,
+			'author': self.author,
+			'user_id': self.user_id,
 			'subject': self.subject,
 			'body': self.body,
-			'category': self.category,
+			'chanel': self.chanel,
 			'time_crated': self.time_crated,
 			'time_updated': self.time_updated
 		}
@@ -159,7 +159,15 @@ def user_by_id(id_: int):
 	"""
 	update is_banned (if the user is admin)
 	"""
-	...
+	user_to_update_ls: list[Users] = Users.query.filter_by(id=id_).all()
+	if user_to_update_ls:
+		req_body: dict[str, bool] = request.json
+		if 'is_banned' in req_body and type(req_body['is_banned']) == bool:
+			user_to_update_ls[0].is_banned = req_body['is_banned']
+			db.session.commit()
+			return make_response(jsonify({'task': 'update_user', 'status': 'success'}), 200)
+		return make_response(jsonify({'task': 'update_user', 'status': 'failed', 'detail': 'request body is not valid'}), 400)
+	return make_response(jsonify({'task': 'update_user', 'status': 'failed', 'detail': 'user id does not exist'}), 400)
 
 
 if __name__ == '__main__':
