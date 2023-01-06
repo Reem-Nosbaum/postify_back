@@ -55,18 +55,17 @@ class Channels(db.Model):
 class Posts(db.Model):
 	__tablename__ = 'posts'
 	id = db.Column(db.Integer, primary_key=True)
-	user = db.relationship("Users", backref="users")
 	user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 	subject = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
 	body = db.Column(db.Text, nullable=False)
 	channel = db.Column(db.Integer, db.ForeignKey('channels.id'), nullable=False)
 	time_crated = db.Column(db.DateTime, nullable=False, default=datetime.now())
 	time_updated = db.Column(db.DateTime, nullable=True)
+	user = db.relationship("Users", backref="users")
 
 	def get_dict(self):
 		return {
 			'id': self.id,
-			'user': self.user,
 			'user_id': self.user_id,
 			'subject': self.subject,
 			'body': self.body,
