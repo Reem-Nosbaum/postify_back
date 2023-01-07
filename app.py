@@ -46,29 +46,30 @@ class Subjects(db.Model):
 	subject = db.Column(db.Text, unique=True, nullable=False)
 
 
-class Groups(db.Model):
-	__tablename__ = 'groups'
+class Channels(db.Model):
+	__tablename__ = 'channels'
 	id = db.Column(db.Integer, primary_key=True)
-	group = db.Column(db.Text, unique=True, nullable=False)
+	channel = db.Column(db.Text, unique=True, nullable=False)
 
 
 class Posts(db.Model):
 	__tablename__ = 'posts'
 	id = db.Column(db.Integer, primary_key=True)
-	user = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+	user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 	subject = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
 	body = db.Column(db.Text, nullable=False)
-	group = db.Column(db.Integer, db.ForeignKey('groups.id'), nullable=False)
+	channel = db.Column(db.Integer, db.ForeignKey('channels.id'), nullable=False)
 	time_crated = db.Column(db.DateTime, nullable=False, default=datetime.now())
 	time_updated = db.Column(db.DateTime, nullable=True)
+	user = db.relationship("Users", backref="users")
 
 	def get_dict(self):
 		return {
 			'id': self.id,
-			'user': self.user,
+			'user_id': self.user_id,
 			'subject': self.subject,
 			'body': self.body,
-			'group': self.group,
+			'channel': self.channel,
 			'time_crated': self.time_crated,
 			'time_updated': self.time_updated
 		}
