@@ -6,6 +6,7 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
+from typing import Optional
 
 from utils.auth import signup_pw_validation
 
@@ -131,6 +132,7 @@ def logout():
 
 
 @app.route('/posts', methods=['GET', 'POST'])
+@login_required
 def posts():
 	"""
 	post massage (if user is not banned)
@@ -138,7 +140,30 @@ def posts():
 	get message by subject (returns all public messages in the subject) - query params
 	get posts by user_id (returns all public messages from the user)- query params
 	"""
-	...
+	if request.method == 'GET':
+		res_detail: str
+		user_id: Optional[int] = request.args.get('user_id', default=None, type=int)
+		subject_id: Optional[int] = request.args.get('subject_id', default=None, type=int)
+		if user_id:
+			user_ls: list[Users] = Users.query.filter_by(id=user_id).all()
+			if user_ls:
+				if not user_ls[0].is_banned:
+					posts_from_db: list[Posts] = Posts.query.filter_by(user_id=user_id).all()
+					posts: list[dict] = [post.get_dict() for post in posts_from_db]
+					return make_response(jsonify(posts), 200)
+				else:
+					res_detail = 'user is banned'
+					return make_response(jsonify({'status': 'failed', 'detail': res_detail}), 409)
+			res_detail = 'user does not exist'
+			return make_response(jsonify({'status': 'failed', 'detail': res_detail}), 404)
+		elif subject_id:
+			posts_from_db: list[Posts] = Posts.query.filter_by(subject=subject_id)
+			posts: list[dict] = [post.get_dict() for post in posts_from_db if not post.user.is_banned]
+			return make_response(jsonify(posts), 200)
+		else:
+			posts_from_db: list[Posts] = Posts.query.all()
+			posts: list[dict] = [post.get_dict() for post in posts_from_db if not post.user.is_banned]
+			return make_response(jsonify(posts), 200)
 
 
 @app.route('/posts/<int:id_>', methods=['GET', 'PUT', 'DELETE'])
