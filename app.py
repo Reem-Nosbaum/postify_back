@@ -25,7 +25,7 @@ db = SQLAlchemy(app)
 
 class Users(db.Model):
 	__tablename__ = 'users'
-	id = db.Column(db.Integer, primary_key=True)
+	id = db.Column(db.BigInteger, primary_key=True)
 	username = db.Column(db.Text, unique=True, nullable=False)
 	password = db.Column(db.Text, nullable=False)
 	is_admin = db.Column(db.Boolean, nullable=False)
@@ -43,25 +43,25 @@ class Users(db.Model):
 
 class Subjects(db.Model):
 	__tablename__ = 'subjects'
-	id = db.Column(db.Integer, primary_key=True)
+	id = db.Column(db.BigInteger, primary_key=True)
 	subject = db.Column(db.Text, unique=True, nullable=False)
 
 
 class Channels(db.Model):
 	__tablename__ = 'channels'
-	id = db.Column(db.Integer, primary_key=True)
+	id = db.Column(db.BigInteger, primary_key=True)
 	channel = db.Column(db.Text, unique=True, nullable=False)
 
 
 class Posts(db.Model):
 	__tablename__ = 'posts'
-	id = db.Column(db.Integer, primary_key=True)
+	id = db.Column(db.BigInteger, primary_key=True)
 	user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 	subject = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
 	body = db.Column(db.Text, nullable=False)
 	channel = db.Column(db.Integer, db.ForeignKey('channels.id'), nullable=False)
-	time_crated = db.Column(db.DateTime, nullable=False, default=datetime.now())
-	time_updated = db.Column(db.DateTime, nullable=True)
+	time_crated = db.Column(db.DateTime, nullable=False, default=datetime.utcnow())
+	time_updated = db.Column(db.DateTime, nullable=True, default=None)
 	user = db.relationship("Users", backref="users")
 
 	def get_dict(self):
@@ -140,30 +140,6 @@ def posts():
 	get message by subject (returns all public messages in the subject) - query params
 	get posts by user_id (returns all public messages from the user)- query params
 	"""
-	if request.method == 'GET':
-		res_detail: str
-		user_id: Optional[int] = request.args.get('user_id', default=None, type=int)
-		subject_id: Optional[int] = request.args.get('subject_id', default=None, type=int)
-		if user_id:
-			user_ls: list[Users] = Users.query.filter_by(id=user_id).all()
-			if user_ls:
-				if not user_ls[0].is_banned:
-					posts_from_db: list[Posts] = Posts.query.filter_by(user_id=user_id).all()
-					posts: list[dict] = [post.get_dict() for post in posts_from_db]
-					return make_response(jsonify(posts), 200)
-				else:
-					res_detail = 'user is banned'
-					return make_response(jsonify({'status': 'failed', 'detail': res_detail}), 409)
-			res_detail = 'user does not exist'
-			return make_response(jsonify({'status': 'failed', 'detail': res_detail}), 404)
-		elif subject_id:
-			posts_from_db: list[Posts] = Posts.query.filter_by(subject=subject_id)
-			posts: list[dict] = [post.get_dict() for post in posts_from_db if not post.user.is_banned]
-			return make_response(jsonify(posts), 200)
-		else:
-			posts_from_db: list[Posts] = Posts.query.all()
-			posts: list[dict] = [post.get_dict() for post in posts_from_db if not post.user.is_banned]
-			return make_response(jsonify(posts), 200)
 
 
 @app.route('/posts/<int:id_>', methods=['GET', 'PUT', 'DELETE'])
