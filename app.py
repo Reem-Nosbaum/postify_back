@@ -149,7 +149,6 @@ def post_by_id(id_: int):
 	update message by id (if the user is the poster)
 	delete message by id (if the user is the poster)
 	"""
-	...
 
 
 @app.route('/users/<int:id_>', methods=['PUT'])
