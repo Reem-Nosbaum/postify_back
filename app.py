@@ -56,10 +56,10 @@ class Channels(db.Model):
 class Posts(db.Model):
 	__tablename__ = 'posts'
 	id = db.Column(db.BigInteger, primary_key=True)
-	user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-	subject = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+	user_id = db.Column(db.BigInteger, db.ForeignKey('users.id'), nullable=False)
+	subject = db.Column(db.BigInteger, db.ForeignKey('subjects.id'), nullable=False)
 	body = db.Column(db.Text, nullable=False)
-	channel = db.Column(db.Integer, db.ForeignKey('channels.id'), nullable=False)
+	channel = db.Column(db.BigInteger, db.ForeignKey('channels.id'), nullable=False)
 	time_crated = db.Column(db.DateTime, nullable=False, default=datetime.utcnow())
 	time_updated = db.Column(db.DateTime, nullable=True, default=None)
 	user = db.relationship("Users", backref="users")
