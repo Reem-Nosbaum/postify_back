@@ -6,6 +6,7 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
+from typing import Optional
 
 from utils.auth import signup_pw_validation
 
@@ -24,7 +25,7 @@ db = SQLAlchemy(app)
 
 class Users(db.Model):
 	__tablename__ = 'users'
-	id = db.Column(db.Integer, primary_key=True)
+	id = db.Column(db.BigInteger, primary_key=True)
 	username = db.Column(db.Text, unique=True, nullable=False)
 	password = db.Column(db.Text, nullable=False)
 	is_admin = db.Column(db.Boolean, nullable=False)
@@ -42,25 +43,25 @@ class Users(db.Model):
 
 class Subjects(db.Model):
 	__tablename__ = 'subjects'
-	id = db.Column(db.Integer, primary_key=True)
+	id = db.Column(db.BigInteger, primary_key=True)
 	subject = db.Column(db.Text, unique=True, nullable=False)
 
 
 class Channels(db.Model):
 	__tablename__ = 'channels'
-	id = db.Column(db.Integer, primary_key=True)
+	id = db.Column(db.BigInteger, primary_key=True)
 	channel = db.Column(db.Text, unique=True, nullable=False)
 
 
 class Posts(db.Model):
 	__tablename__ = 'posts'
-	id = db.Column(db.Integer, primary_key=True)
-	user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-	subject = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+	id = db.Column(db.BigInteger, primary_key=True)
+	user_id = db.Column(db.BigInteger, db.ForeignKey('users.id'), nullable=False)
+	subject = db.Column(db.BigInteger, db.ForeignKey('subjects.id'), nullable=False)
 	body = db.Column(db.Text, nullable=False)
-	channel = db.Column(db.Integer, db.ForeignKey('channels.id'), nullable=False)
-	time_crated = db.Column(db.DateTime, nullable=False, default=datetime.now())
-	time_updated = db.Column(db.DateTime, nullable=True)
+	channel = db.Column(db.BigInteger, db.ForeignKey('channels.id'), nullable=False)
+	time_crated = db.Column(db.DateTime, nullable=False, default=datetime.utcnow())
+	time_updated = db.Column(db.DateTime, nullable=True, default=None)
 	user = db.relationship("Users", backref="users")
 
 	def get_dict(self):
@@ -131,6 +132,7 @@ def logout():
 
 
 @app.route('/posts', methods=['GET', 'POST'])
+@login_required
 def posts():
 	"""
 	post massage (if user is not banned)
@@ -138,7 +140,6 @@ def posts():
 	get message by subject (returns all public messages in the subject) - query params
 	get posts by user_id (returns all public messages from the user)- query params
 	"""
-	...
 
 
 @app.route('/posts/<int:id_>', methods=['GET', 'PUT', 'DELETE'])
