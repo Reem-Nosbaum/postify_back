@@ -7,6 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from typing import Optional
+from sqlalchemy.exc import SQLAlchemyError
 
 from utils.auth import signup_pw_validation
 
@@ -140,9 +141,46 @@ def posts():
 	get message by subject (returns all public messages in the subject) - query params
 	get posts by user_id (returns all public messages from the user)- query params
 	"""
+	res_detail: str
+	if request.method == 'GET':
+		user_id: Optional[int] = request.args.get('user_id', default=None, type=int)
+		subject_id: Optional[int] = request.args.get('subject_id', default=None, type=int)
+		if user_id:
+			user_ls: list[Users] = Users.query.filter_by(id=user_id).all()
+			if user_ls:
+				if not user_ls[0].is_banned:
+					posts_from_db: list[Posts] = Posts.query.filter_by(user_id=user_id).all()
+					posts: list[dict] = [post.get_dict() for post in posts_from_db]
+					return make_response(jsonify(posts), 200)
+				else:
+					res_detail = 'user is banned'
+					return make_response(jsonify({'task': 'get posts', 'status': 'failed', 'detail': res_detail}), 403)
+			res_detail = 'user does not exist'
+			return make_response(jsonify({'task': 'get posts', 'status': 'failed', 'detail': res_detail}), 404)
+		elif subject_id:
+			posts_from_db: list[Posts] = Posts.query.filter_by(subject=subject_id)
+			posts: list[dict] = [post.get_dict() for post in posts_from_db if not post.user.is_banned]
+			return make_response(jsonify(posts), 200)
+		else:
+			posts_from_db: list[Posts] = Posts.query.all()
+			posts: list[dict] = [post.get_dict() for post in posts_from_db if not post.user.is_banned]
+			return make_response(jsonify(posts), 200)
+	else:
+		try:
+			post_data: dict = request.json
+			post: Posts = Posts(user_id=session['user']['id'],
+								subject=(post_data.get('subject')),
+								channel=(post_data.get('channel')),
+								body=(post_data.get('body')))
+			db.session.add(post)
+			db.session.commit()
+			return make_response(jsonify({'task': 'post_message', 'status': 'success'}), 200)
+		except SQLAlchemyError as e:
+			return make_response(jsonify({'task': 'post_message', 'status': 'failed', 'detail': str(e)}), 400)
 
 
 @app.route('/posts/<int:id_>', methods=['GET', 'PUT', 'DELETE'])
+@login_required
 def post_by_id(id_: int):
 	"""
 	get message by id
