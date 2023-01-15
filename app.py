@@ -187,7 +187,33 @@ def post_by_id(id_: int):
 	update message by id (if the user is the poster)
 	delete message by id (if the user is the poster)
 	"""
-	...
+	res_detail: str
+	posts_by_id: list[Posts] = Posts.query.filter_by(id=id_).all()
+	if request.method == 'GET':
+		if posts_by_id:
+			posts: list[dict] = [post.get_dict() for post in posts_by_id]
+			return make_response(jsonify(posts), 200)
+		res_detail = 'post does not exist'
+		return make_response(jsonify({'task': 'get_post_by_id', 'status': 'failed', 'detail': res_detail}), 404)
+	elif request.method == 'PUT':
+		if posts_by_id:
+			req_body: dict = request.json
+			posts_by_id[0].user_id = session['user']['id']
+			posts_by_id[0].subject = req_body['subject']
+			posts_by_id[0].channel = req_body['channel']
+			posts_by_id[0].body = req_body['body']
+			posts_by_id[0].time_updated = datetime.utcnow()
+			db.session.commit()
+			return make_response(jsonify({'task': 'update_post', 'status': 'success'}), 200)
+		res_detail = 'invalid input'
+		return make_response(jsonify({'task': 'update_post', 'status': 'failed', 'detail': res_detail}), 400)
+	else:
+		if posts_by_id:
+			db.session.delete(posts_by_id[0])
+			db.session.commit()
+			return make_response(jsonify({'task': 'delete_post', 'status': 'success'}), 200)
+		res_detail = 'post does not exist'
+		return make_response(jsonify({'task': 'delete_post', 'status': 'failed', 'detail': res_detail}), 404)
 
 
 @app.route('/users/<int:id_>', methods=['PUT'])
