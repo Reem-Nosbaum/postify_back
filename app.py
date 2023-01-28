@@ -83,6 +83,7 @@ def login_required(f):
 		if 'user' in session:
 			return f(*args, **kwargs)
 		return make_response(jsonify({'task': 'failed', 'detail': 'unauthorized'}), 401)
+
 	return decorated
 
 
@@ -94,6 +95,7 @@ def admin_required(f):
 				return f(*args, **kwargs)
 			return make_response(jsonify({'task': 'failed', 'detail': 'forbidden'}), 403)
 		return make_response(jsonify({'task': 'failed', 'detail': 'unauthorized'}), 401)
+
 	return decorated
 
 
@@ -189,31 +191,27 @@ def post_by_id(id_: int):
 	"""
 	res_detail: str
 	posts_by_id: list[Posts] = Posts.query.filter_by(id=id_).all()
-	if request.method == 'GET':
-		if posts_by_id:
+	if posts_by_id:
+		if request.method == 'GET':
 			posts: list[dict] = [post.get_dict() for post in posts_by_id]
 			return make_response(jsonify(posts), 200)
-		res_detail = 'post does not exist'
-		return make_response(jsonify({'task': 'get_post_by_id', 'status': 'failed', 'detail': res_detail}), 404)
-	elif request.method == 'PUT':
-		if posts_by_id:
-			req_body: dict = request.json
-			posts_by_id[0].user_id = session['user']['id']
-			posts_by_id[0].subject = req_body['subject']
-			posts_by_id[0].channel = req_body['channel']
-			posts_by_id[0].body = req_body['body']
-			posts_by_id[0].time_updated = datetime.utcnow()
-			db.session.commit()
-			return make_response(jsonify({'task': 'update_post', 'status': 'success'}), 200)
-		res_detail = 'invalid input'
-		return make_response(jsonify({'task': 'update_post', 'status': 'failed', 'detail': res_detail}), 400)
-	else:
-		if posts_by_id:
+		elif request.method == 'PUT':
+			try:
+				req_body: dict = request.json
+				posts_by_id[0].subject = req_body['subject']
+				posts_by_id[0].channel = req_body['channel']
+				posts_by_id[0].body = req_body['body']
+				posts_by_id[0].time_updated = datetime.utcnow()
+				db.session.commit()
+				return make_response(jsonify({'task': 'update_post', 'status': 'success'}), 200)
+			except SQLAlchemyError as e:
+				return make_response(jsonify({'task': 'update_post', 'status': 'failed', 'detail': str(e)}), 400)
+		else:
 			db.session.delete(posts_by_id[0])
 			db.session.commit()
 			return make_response(jsonify({'task': 'delete_post', 'status': 'success'}), 200)
-		res_detail = 'post does not exist'
-		return make_response(jsonify({'task': 'delete_post', 'status': 'failed', 'detail': res_detail}), 404)
+	res_detail = 'post does not exist'
+	return make_response(jsonify({'task': 'get_post_by_id', 'status': 'failed', 'detail': res_detail}), 404)
 
 
 @app.route('/users/<int:id_>', methods=['PUT'])
